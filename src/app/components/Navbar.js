@@ -1,63 +1,23 @@
-"use client";
-import Link from 'next/link';
-import { useAuth } from '../context/AuthContext';
-import { signOut } from 'next-auth/react';
+import Link from 'next/link'
 
 export default function Navbar() {
-  const { isAuthenticated, user, isLoading } = useAuth();
-
-  const handleLogout = async () => {
-    await signOut({ redirect: false });
-    window.location.href = '/';
-  };
-
   return (
-    <nav className="bg-blue-600 py-4">
-      <div className="container mx-auto flex items-center justify-between px-4">
-        <Link href="/" className="text-xl font-bold text-white">
-          TopUp Games
+    <nav className="flex justify-between items-center p-4 bg-gray-900 dark:bg-gray-800 shadow-md">
+      <div className="logo">
+        <h1 className="text-2xl font-bold text-white">VPN Pro</h1>
+      </div>
+      <div className="nav-links flex space-x-6">
+        <a href="#features" className="text-gray-300 hover:text-white transition">Fitur</a>
+        <a href="#pricing" className="text-gray-300 hover:text-white transition">Harga</a>
+        <a href="#about" className="text-gray-300 hover:text-white transition">Tentang</a>
+      </div>
+      <div className="actions">
+        <Link href="/auth/login">
+          <button className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition">
+            Mulai Sekarang
+          </button>
         </Link>
-
-        <div className="flex items-center space-x-4">
-          <Link href="/" className="text-white hover:text-blue-200">
-            Beranda
-          </Link>
-          <Link href="/games" className="text-white hover:text-blue-200">
-            Games
-          </Link>
-
-          {isLoading ? (
-            <div className="h-8 w-8 animate-pulse rounded-full bg-blue-400"></div>
-          ) : isAuthenticated ? (
-            <div className="flex items-center space-x-4">
-              <Link href="/user/profile" className="text-white hover:text-blue-200">
-                {user?.name || 'Profil'}
-              </Link>
-              <button
-                onClick={handleLogout}
-                className="rounded bg-red-500 px-4 py-2 text-white hover:bg-red-600"
-              >
-                Logout
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center space-x-2">
-              <Link
-                href="/auth/login"
-                className="rounded bg-white px-4 py-2 text-blue-600 hover:bg-blue-50"
-              >
-                Login
-              </Link>
-              <Link
-                href="/auth/register"
-                className="rounded border border-white px-4 py-2 text-white hover:bg-blue-500"
-              >
-                Daftar
-              </Link>
-            </div>
-          )}
-        </div>
       </div>
     </nav>
-  );
+  )
 }

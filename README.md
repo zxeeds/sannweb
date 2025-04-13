@@ -28,6 +28,7 @@ Website topup game dengan Next.js, Prisma, dan NextAuth.
 
 3. Setup database
 ```npx prisma migrate dev```
+```npx prisma db push```
 
 4. Jalankan development server
 ```npm run dev```

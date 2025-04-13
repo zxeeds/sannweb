@@ -50,7 +50,7 @@ export default function Login() {
       }
   
       // Redirect ke homepage
-      router.push("/");
+      router.push("/home");
       router.refresh();
     } catch (error) {
       setError("Terjadi kesalahan saat login");

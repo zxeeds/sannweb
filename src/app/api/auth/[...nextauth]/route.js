@@ -56,15 +56,23 @@ export const authOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id;
+        token.role = user.role;
       }
       return token;
     },
     async session({ session, token }) {
       if (token) {
-        session.user.id = token.id;
+        session.user.role = token.role;
       }
       return session;
+    },
+    async redirect({ url, baseUrl }) {
+      // Redirect ke /home setelah login
+      if (url.startsWith(baseUrl)) {
+        return `${baseUrl}/home`; // Arahkan ke home
+      }
+      // Jika URL tidak dimulai dengan baseUrl, kembalikan baseUrl saja
+      return baseUrl;
     },
   },
   secret: process.env.NEXTAUTH_SECRET,
