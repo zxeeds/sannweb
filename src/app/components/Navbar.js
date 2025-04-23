@@ -12,7 +12,7 @@ export default function Navbar() {
         <a href="#about" className="text-gray-300 hover:text-white transition">Tentang</a>
       </div>
       <div className="actions">
-        <Link href="/auth/login">
+        <Link href="/login">
           <button className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition">
             Mulai Sekarang
           </button>

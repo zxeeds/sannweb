@@ -10,7 +10,7 @@ export default function Hero() {
         <p className="text-xl mb-8 text-gray-300">
           Browsing aman, cepat, dan tanpa batasan dengan VPN Pro
         </p>
-        <Link href="/auth/login">
+        <Link href="/login">
           <button className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition duration-300">
             Dapatkan VPN Sekarang
           </button>
