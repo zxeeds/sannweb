@@ -9,9 +9,11 @@ import {
   Sun
 } from 'lucide-react'
 import { useTheme } from '@/context/ThemeContext'
+import { useSession } from 'next-auth/react'
 
 export default function Header() {
   const { isDarkMode, toggleTheme } = useTheme()
+  const { data: session } = useSession()
 
   return (
     <header className="bg-white dark:bg-gray-800 shadow-sm">
@@ -51,7 +53,7 @@ export default function Header() {
           {/* Profil Pengguna */}
           <div className="flex items-center text-gray-700 dark:text-gray-300">
             <UserIcon className="mr-2 text-gray-500 dark:text-gray-400" />
-            <span>John Doe</span>
+            <span>{session?.user?.name || 'Loading...'}</span>
           </div>
         </div>
       </div>
