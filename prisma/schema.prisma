@@ -24,6 +24,8 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   transactions  Transaction[]
+  loginAttempts Int       @default(0)
+  lockedUntil   DateTime?
 }
 
 model Transaction {

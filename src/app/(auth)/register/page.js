@@ -53,7 +53,7 @@ export default function Register() {
       }
 
       // Redirect ke halaman login
-      router.push("/auth/login?registered=true");
+      router.push("/login?registered=true");
     } catch (error) {
       setError(error.message);
     } finally {

@@ -29,22 +29,66 @@ export const authOptions = {
             return null;
           }
 
+          // === BAGIAN BARU: CEK ACCOUNT LOCK ===
+          const now = new Date();
+          if (user.lockedUntil && user.lockedUntil > now) {
+            // Account masih di-lock
+            const minutesLeft = Math.ceil((user.lockedUntil - now) / (1000 * 60));
+            throw new Error(`Account locked. Try again in ${minutesLeft} minutes.`);
+          }
+
           const isPasswordMatch = await bcrypt.compare(
             credentials.password,
             user.password
           );
 
           if (!isPasswordMatch) {
+            // === BAGIAN BARU: INCREMENT LOGIN ATTEMPTS ===
+            const newAttempts = user.loginAttempts + 1;
+            const shouldLock = newAttempts >= 5;
+            
+            await prisma.user.update({
+              where: { id: user.id },
+              data: {
+                loginAttempts: newAttempts,
+                lockedUntil: shouldLock ? 
+                  new Date(Date.now() + 15 * 60 * 1000) : // Lock 15 menit
+                  null
+              }
+            });
+
+            if (shouldLock) {
+              throw new Error("Too many failed attempts. Account locked for 15 minutes.");
+            }
+            
             return null;
+          }
+
+          // === BAGIAN BARU: RESET COUNTER JIKA BERHASIL ===
+          if (user.loginAttempts > 0 || user.lockedUntil) {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: {
+                loginAttempts: 0,
+                lockedUntil: null
+              }
+            });
           }
 
           return {
             id: user.id,
             email: user.email,
             name: user.name,
+            role: user.role, // Tambah role di return
           };
         } catch (error) {
           console.error("Error during authentication:", error);
+          
+          // === BAGIAN BARU: THROW ERROR UNTUK LOCK MESSAGE ===
+          if (error.message.includes("locked") || error.message.includes("Too many")) {
+            throw error; // Pass error message ke frontend
+          }
+          
           return null;
         }
       },
@@ -67,11 +111,9 @@ export const authOptions = {
       return session;
     },
     async redirect({ url, baseUrl }) {
-      // Redirect ke /home setelah login
       if (url.startsWith(baseUrl)) {
-        return `${baseUrl}/home`; // Arahkan ke home
+        return `${baseUrl}/home`;
       }
-      // Jika URL tidak dimulai dengan baseUrl, kembalikan baseUrl saja
       return baseUrl;
     },
   },
@@ -82,5 +124,4 @@ export const authOptions = {
 };
 
 const handler = NextAuth(authOptions);
-
 export { handler as GET, handler as POST };
