@@ -32,3 +32,5 @@ Website topup game dengan Next.js, Prisma, dan NextAuth.
 
 4. Jalankan development server
 ```npm run dev```
+5. icon menu
+```npm install lucide-react```

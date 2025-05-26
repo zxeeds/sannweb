@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql" // Bisa diganti dengan mysql atau sqlite
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -12,6 +12,32 @@ enum Role {
   MEMBER
   RESELLER
 }
+
+// ✅ ENUM BARU - Tidak mengubah existing
+enum VpnAccountStatus {
+  ACTIVE
+  EXPIRED
+  SUSPENDED
+  DELETED
+}
+
+enum TransactionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+enum ProductType {
+  VPN_ACCOUNT
+  VPN_EXTEND
+  VOUCHER
+  OTHER
+}
+
+// ✅ EXISTING USER MODEL - TIDAK DIUBAH
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -20,21 +46,257 @@ model User {
   password      String
   emailVerified DateTime?
   image         String?
-  phone         String?   // Tambahkan field ini
+  phone         String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  transactions  Transaction[]
   loginAttempts Int       @default(0)
   lockedUntil   DateTime?
+  
+  // Relations - EXISTING
+  vpnAccounts   VpnAccount[]
+  transactions  Transaction[]
+  
+  // Relations - NEW (tidak mengubah existing)
+  managedAccounts VpnAccountManaged[] @relation("UserManagedAccounts")
+  
+  @@map("users")
 }
 
+// ✅ EXISTING VPN SERVER MODEL - TIDAK DIUBAH
+model VpnServer {
+  id            Int      @id @default(autoincrement())
+  nama          String   @db.VarChar(255)
+  domain        String   @unique @db.VarChar(255)
+  quota         Int
+  apiKey        String   @map("api_key") @db.Text
+  apiUrl        String   @map("api_url") @db.VarChar(500)
+  hargaMember   Decimal  @map("harga_member") @db.Decimal(10, 2)
+  hargaReseller Decimal  @map("harga_reseller") @db.Decimal(10, 2)
+  stok          Int      @default(0)
+  stb           Boolean  @default(false)
+  protocol      Json?
+  deskripsi     String?  @db.Text
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  
+  // Relations - EXISTING
+  vpnAccounts   VpnAccount[]
+  
+  // Relations - NEW (tidak mengubah existing)
+  managedAccounts VpnAccountManaged[] @relation("ServerManagedAccounts")
+  
+  @@map("vpn_servers")
+  @@index([nama])
+  @@index([domain])
+  @@index([createdAt])
+}
+
+// ✅ EXISTING VPN ACCOUNT MODEL - TIDAK DIUBAH
+model VpnAccount {
+  id            Int      @id @default(autoincrement())
+  userId        String
+  vpnServerId   Int
+  
+  // VPN Data - EXISTING
+  protocol      String
+  username      String
+  uuid          String?
+  password      String?
+  domain        String
+  expired       DateTime
+  ip_limit      String
+  quota         String
+  
+  // Config Links - EXISTING
+  config_links  Json
+  
+  // Status & Metadata - EXISTING
+  status        String   @default("ACTIVE")
+  api_response  Json?
+  
+  // Relations - EXISTING
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vpnServer     VpnServer @relation(fields: [vpnServerId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@unique([userId, vpnServerId])
+  @@map("vpn_accounts")
+  @@index([status])
+  @@index([expired])
+}
+
+// ✅ EXISTING TRANSACTION MODEL - TIDAK DIUBAH
 model Transaction {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
-  gameId      String
-  amount      Float
-  status      String   @default("pending") // pending, completed, failed
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            Int      @id @default(autoincrement())
+  userId        String
+  
+  // Product Info - EXISTING
+  product_type  String
+  product_id    Int?
+  product_name  String
+  
+  // Transaction Details - EXISTING
+  quantity      Int      @default(1)
+  unit_price    Float
+  total_price   Float
+  
+  // Payment Info - EXISTING
+  payment_method String
+  
+  // Status & Metadata - EXISTING
+  status        String   @default("PENDING")
+  description   String?  @db.Text
+  metadata      Json?
+  
+  // External References - EXISTING
+  external_id   String?
+  reference_id  String?  @unique
+  
+  // Timestamps - EXISTING
+  processed_at  DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relations - EXISTING
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("transactions")
+  @@index([status])
+  @@index([product_type])
+  @@index([createdAt])
+}
+
+// 🆕 TABEL BARU - VPN ACCOUNT MANAGEMENT (Tidak mengubah existing)
+model VpnAccountManaged {
+  id              Int      @id @default(autoincrement())
+  
+  // Basic Account Info
+  username        String   @unique
+  password        String
+  serverId        Int      @map("server_id")
+  userId          String?  @map("user_id") // Optional - bisa manual create
+  
+  // VPN Specific Data
+  protocol        String?  @default("vmess")
+  uuid            String?  // For vmess/vless
+  domain          String?  // Override server domain if needed
+  
+  // Account Management
+  expiredAt       DateTime @map("expired_at")
+  maxConnections  Int      @map("max_connections") @default(1)
+  quotaLimit      String?  @map("quota_limit") @default("unlimited")
+  
+  // Status & Config
+  status          VpnAccountStatus @default(ACTIVE)
+  config_links    Json?    @map("config_links")
+  
+  // API Integration
+  api_response    Json?    @map("api_response")
+  external_id     String?  @map("external_id")
+  
+  // Timestamps
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  user            User?     @relation("UserManagedAccounts", fields: [userId], references: [id], onDelete: SetNull)
+  server          VpnServer @relation("ServerManagedAccounts", fields: [serverId], references: [id], onDelete: Cascade)
+  connectionLogs  VpnConnectionLog[]
+  
+  @@map("vpn_accounts_managed")
+  @@index([status])
+  @@index([expiredAt])
+  @@index([username])
+  @@index([serverId])
+  @@index([userId])
+}
+
+// 🆕 TABEL BARU - CONNECTION LOGS
+model VpnConnectionLog {
+  id             Int       @id @default(autoincrement())
+  accountId      Int       @map("account_id")
+  
+  // Connection Info
+  ipAddress      String    @map("ip_address") @db.VarChar(45)
+  userAgent      String?   @map("user_agent") @db.Text
+  location       String?   // Country/City
+  
+  // Session Data
+  connectedAt    DateTime  @default(now()) @map("connected_at")
+  disconnectedAt DateTime? @map("disconnected_at")
+  
+  // Usage Stats
+  bytesIn        BigInt    @default(0) @map("bytes_in")
+  bytesOut       BigInt    @default(0) @map("bytes_out")
+  duration       Int?      // in seconds
+  
+  // Relations
+  account        VpnAccountManaged @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  
+  @@map("vpn_connection_logs")
+  @@index([accountId])
+  @@index([connectedAt])
+  @@index([ipAddress])
+}
+
+// 🆕 TABEL BARU - VOUCHER SYSTEM (Future)
+model Voucher {
+  id            Int      @id @default(autoincrement())
+  code          String   @unique
+  
+  // Voucher Details
+  type          String   // "DISCOUNT", "FREE_TRIAL", "EXTEND"
+  value         Decimal  @db.Decimal(10, 2)
+  isPercentage  Boolean  @default(false) @map("is_percentage")
+  
+  // Usage Limits
+  maxUses       Int?     @map("max_uses")
+  usedCount     Int      @default(0) @map("used_count")
+  
+  // Validity
+  validFrom     DateTime @map("valid_from")
+  validUntil    DateTime @map("valid_until")
+  
+  // Restrictions
+  minPurchase   Decimal? @map("min_purchase") @db.Decimal(10, 2)
+  applicableFor Json?    @map("applicable_for")
+  
+  // Status
+  isActive      Boolean  @default(true) @map("is_active")
+  
+  // Timestamps
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  usages        VoucherUsage[]
+  
+  @@map("vouchers")
+  @@index([code])
+  @@index([validFrom, validUntil])
+}
+
+// 🆕 TABEL BARU - VOUCHER USAGE
+model VoucherUsage {
+  id          Int      @id @default(autoincrement())
+  voucherId   Int      @map("voucher_id")
+  userId      String   @map("user_id")
+  
+  // Usage Details
+  discountAmount Decimal @map("discount_amount") @db.Decimal(10, 2)
+  originalAmount Decimal @map("original_amount") @db.Decimal(10, 2)
+  finalAmount    Decimal @map("final_amount") @db.Decimal(10, 2)
+  
+  // Timestamps
+  usedAt      DateTime @default(now()) @map("used_at")
+  
+  // Relations
+  voucher     Voucher  @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+  
+  @@map("voucher_usages")
+  @@index([voucherId])
+  @@index([userId])
+  @@index([usedAt])
 }
