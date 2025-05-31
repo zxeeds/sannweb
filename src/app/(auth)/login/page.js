@@ -1,25 +1,26 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-export default function Login() {
+// Pisahkan komponen yang menggunakan useSearchParams
+function LoginForm() {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
-  
+    
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  
+    
   // === BAGIAN BARU: VALIDATION STATES ===
   const [validationErrors, setValidationErrors] = useState({});
   const [touched, setTouched] = useState({});
-  
+    
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams(); // Ini yang menyebabkan error
   const isRegistered = searchParams.get("registered");
 
   useEffect(() => {
@@ -50,7 +51,7 @@ export default function Login() {
     const errors = {};
     errors.email = validateEmail(formData.email);
     errors.password = validatePassword(formData.password);
-    
+        
     setValidationErrors(errors);
     return !errors.email && !errors.password;
   };
@@ -58,7 +59,7 @@ export default function Login() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     const sanitizedValue = sanitizeInput(value);
-    
+        
     setFormData({
       ...formData,
       [name]: sanitizedValue,
@@ -80,7 +81,7 @@ export default function Login() {
   const handleBlur = (e) => {
     const { name } = e.target;
     setTouched({ ...touched, [name]: true });
-    
+        
     const errors = { ...validationErrors };
     if (name === "email") {
       errors.email = validateEmail(formData.email);
@@ -94,7 +95,7 @@ export default function Login() {
     e.preventDefault();
     setError("");
     setSuccess("");
-    
+        
     // === BAGIAN BARU: VALIDATE BEFORE SUBMIT ===
     if (!validateForm()) {
       setTouched({ email: true, password: true });
@@ -179,7 +180,6 @@ export default function Login() {
                 <p className="mt-1 text-sm text-red-600">{validationErrors.email}</p>
               )}
             </div>
-
             <div>
               <label htmlFor="password" className="sr-only">
                 Password
@@ -226,5 +226,32 @@ export default function Login() {
         </form>
       </div>
     </div>
+  );
+}
+
+// Loading fallback component
+function LoginLoading() {
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center py-2">
+      <div className="w-full max-w-md space-y-8 rounded-lg bg-white p-6 shadow-md">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded mb-4"></div>
+          <div className="space-y-4">
+            <div className="h-10 bg-gray-200 rounded"></div>
+            <div className="h-10 bg-gray-200 rounded"></div>
+            <div className="h-10 bg-gray-200 rounded"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Main component dengan Suspense
+export default function Login() {
+  return (
+    <Suspense fallback={<LoginLoading />}>
+      <LoginForm />
+    </Suspense>
   );
 }
